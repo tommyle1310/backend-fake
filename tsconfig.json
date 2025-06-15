@@ -21,6 +21,6 @@
       "src/*": ["src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "transactions"],
   "exclude": ["node_modules", "dist", "src-real", "**/*spec.ts", "test"]
 }

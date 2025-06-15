@@ -9,6 +9,7 @@ import {
   animals,
   names,
 } from "unique-names-generator";
+import { VALID_ORDER_STATUSES } from "src/types/orders";
 
 @Injectable()
 export class DataPoolService implements OnModuleInit {
@@ -90,6 +91,12 @@ export class DataPoolService implements OnModuleInit {
       const response = await axios.get(`${this.realBackendUrl}${getEndpoint}`);
       let currentData = response.data?.data || [];
 
+      // Check if the response is successful
+      if (response.data?.EC !== 0) {
+        this.logger.warn(`Invalid response format for ${entityName}, treating as empty array`);
+        currentData = [];
+      }
+
       // Ensure currentData is an array
       if (!Array.isArray(currentData)) {
         this.logger.warn(`Invalid response format for ${entityName}, treating as empty array`);
@@ -122,12 +129,57 @@ export class DataPoolService implements OnModuleInit {
 
           // Check if request was actually successful
           if (postResponse.data?.EC === 0 && postResponse.data?.data) {
+            // For FWallet transactions, we need to ensure the version is properly set
+            if (entityName === 'Orders' && itemData.payment_method === 'FWallet') {
+              // Get latest wallet versions before creating transactions
+              const customerWalletResponse = await axios.get(
+                `${this.realBackendUrl}/fwallets/by-user/${itemData.customer_id}`
+              );
+              const restaurantWalletResponse = await axios.get(
+                `${this.realBackendUrl}/fwallets/by-user/${itemData.restaurant_id}`
+              );
+              const adminWalletResponse = await axios.get(
+                `${this.realBackendUrl}/fwallets/by-user/FLASHFOOD_FINANCE`
+              );
+
+              if (customerWalletResponse.data?.EC === 0 && 
+                  restaurantWalletResponse.data?.EC === 0 && 
+                  adminWalletResponse.data?.EC === 0) {
+                // Update wallet versions in Redis
+                await this.redisService.set(
+                  `fwallet:${itemData.customer_id}`,
+                  JSON.stringify(customerWalletResponse.data.data),
+                  7200 * 1000 // Convert to milliseconds as required by RedisService
+                );
+                await this.redisService.set(
+                  `fwallet:${itemData.restaurant_id}`,
+                  JSON.stringify(restaurantWalletResponse.data.data),
+                  7200 * 1000
+                );
+                await this.redisService.set(
+                  'fwallet:FLASHFOOD_FINANCE',
+                  JSON.stringify(adminWalletResponse.data.data),
+                  7200 * 1000
+                );
+
+                // Log the updated wallet versions
+                this.logger.log('Updated wallet versions in Redis:', {
+                  customer: customerWalletResponse.data.data.version,
+                  restaurant: restaurantWalletResponse.data.data.version,
+                  admin: adminWalletResponse.data.data.version
+                });
+              }
+            }
+
             newItems.push(postResponse.data.data);
             successfulCreations++;
             this.logger.log(`Successfully created ${entityName} ${successfulCreations}/${needed}`);
           } else {
             this.logger.warn(
               `Failed to create ${entityName} item: Invalid response EC=${postResponse.data?.EC}`
+            );
+            this.logger.warn(
+              `data failed:EM=${postResponse.data?.EM}, data=${postResponse.data?.data}`
             );
           }
         } catch (error) {
@@ -678,15 +730,8 @@ export class DataPoolService implements OnModuleInit {
   }
 
   private async ensureOrders(): Promise<any[]> {
-    const orderStatuses = [
-      "pending",
-      "confirmed",
-      "preparing",
-      "ready",
-      "delivering",
-      "delivered",
-      "cancelled",
-    ];
+    // Use the valid order statuses from constants
+    const orderStatuses = VALID_ORDER_STATUSES;
 
     // Get all required data pools first
     const customers = await this.ensureCustomers();
@@ -698,25 +743,19 @@ export class DataPoolService implements OnModuleInit {
 
     return this.ensureEntityPool("Orders", "/orders", "/orders", () => {
       // Pick random entities from actual pools
-      const randomCustomer =
-        customers[Math.floor(Math.random() * customers.length)];
-      const randomRestaurant =
-        restaurants[Math.floor(Math.random() * restaurants.length)];
+      const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
+      const randomRestaurant = restaurants[Math.floor(Math.random() * restaurants.length)];
       const randomDriver = drivers[Math.floor(Math.random() * drivers.length)];
-      const randomDeliveryAddress =
-        addressBooks[Math.floor(Math.random() * addressBooks.length)];
-      const randomPickupAddress =
-        addressBooks[Math.floor(Math.random() * addressBooks.length)];
-      const randomMenuItem =
-        menuItems[Math.floor(Math.random() * menuItems.length)];
-      const randomMenuItemVariant =
-        menuItemVariants[Math.floor(Math.random() * menuItemVariants.length)];
+      const randomDeliveryAddress = addressBooks[Math.floor(Math.random() * addressBooks.length)];
+      const randomPickupAddress = addressBooks[Math.floor(Math.random() * addressBooks.length)];
+      const randomMenuItem = menuItems[Math.floor(Math.random() * menuItems.length)];
+      const randomMenuItemVariant = menuItemVariants[Math.floor(Math.random() * menuItemVariants.length)];
 
-      const randomStatus =
-        orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
-      const paymentMethods = ["FWallet", "COD"];
-      const randomPaymentMethod =
-        paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+      const randomStatus = orderStatuses[Math.floor(Math.random() * orderStatuses.length)];
+      
+      // For testing purposes, let's use COD more frequently to avoid wallet issues
+      const paymentMethods = ["COD", "COD", "COD", "FWallet"]; // 75% chance of COD
+      const randomPaymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
 
       const totalAmount = Math.random() * 500 + 100; // 100-600
       const deliveryFee = Math.random() * 30 + 15; // 15-45
@@ -741,11 +780,11 @@ export class DataPoolService implements OnModuleInit {
       return {
         customer_id: randomCustomer?.id || null,
         restaurant_id: randomRestaurant?.id || null,
-        status: randomStatus.toUpperCase(),
+        status: randomStatus, // Already in correct format
         total_amount: parseFloat(totalAmount.toFixed(2)),
         delivery_fee: parseFloat(deliveryFee.toFixed(2)),
         service_fee: parseFloat(serviceFee.toFixed(2)),
-        payment_status: Math.random() > 0.3 ? "PAID" : "PENDING",
+        payment_status: randomPaymentMethod === "COD" ? "PENDING" : "PAID",
         payment_method: randomPaymentMethod,
         customer_location: randomDeliveryAddress?.id || null,
         restaurant_location: randomPickupAddress?.id || null,
@@ -755,22 +794,17 @@ export class DataPoolService implements OnModuleInit {
             variant_id: randomMenuItemVariant?.id || null,
             name: randomMenuItem?.name || "Unknown Item",
             quantity: Math.floor(Math.random() * 3) + 1,
-            price_at_time_of_order: Math.random() * 100 + 20,
+            price_at_time_of_order: parseFloat((Math.random() * 100 + 20).toFixed(2)),
           },
         ],
-        customer_note:
-          customerNotes[Math.floor(Math.random() * customerNotes.length)],
-        restaurant_note:
-          restaurantNotes[Math.floor(Math.random() * restaurantNotes.length)],
+        customer_note: customerNotes[Math.floor(Math.random() * customerNotes.length)],
+        restaurant_note: restaurantNotes[Math.floor(Math.random() * restaurantNotes.length)],
         order_time: Math.floor(Date.now() / 1000),
-        delivery_time:
-          Math.floor(Date.now() / 1000) +
-          Math.floor(Math.random() * 3600) +
-          1800, // 30min to 90min from now
-        tracking_info: "ORDER_PLACED",
+        delivery_time: Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 3600) + 1800,
+        tracking_info: "ORDER_PLACED", // This is a valid tracking info
       };
     });
-  }
+}
 
   async getDataPools(): Promise<any> {
     const cachedPools = await this.redisService.get(this.cacheKey);
