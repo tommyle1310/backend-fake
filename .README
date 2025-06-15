@@ -1,0 +1,2 @@
+** start ensure data generated sufficient
+curl -X POST http://localhost:2610/data-pools/refresh

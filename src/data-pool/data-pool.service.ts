@@ -88,7 +88,13 @@ export class DataPoolService implements OnModuleInit {
     try {
       // Get current data
       const response = await axios.get(`${this.realBackendUrl}${getEndpoint}`);
-      const currentData = response.data?.data || [];
+      let currentData = response.data?.data || [];
+
+      // Ensure currentData is an array
+      if (!Array.isArray(currentData)) {
+        this.logger.warn(`Invalid response format for ${entityName}, treating as empty array`);
+        currentData = [];
+      }
 
       this.logger.log(`Current ${entityName} count: ${currentData.length}`);
 
@@ -102,29 +108,46 @@ export class DataPoolService implements OnModuleInit {
       this.logger.log(`Generating ${needed} ${entityName} items...`);
 
       const newItems = [];
-      for (let i = 0; i < needed; i++) {
+      let successfulCreations = 0;
+      let attempts = 0;
+      const maxAttempts = needed * 2; // Allow some retry flexibility
+
+      while (successfulCreations < needed && attempts < maxAttempts) {
         try {
           const itemData = generateData();
           const postResponse = await axios.post(
             `${this.realBackendUrl}${postEndpoint}`,
             itemData
           );
-          if (postResponse.data?.data) {
+
+          // Check if request was actually successful
+          if (postResponse.data?.EC === 0 && postResponse.data?.data) {
             newItems.push(postResponse.data.data);
+            successfulCreations++;
+            this.logger.log(`Successfully created ${entityName} ${successfulCreations}/${needed}`);
+          } else {
+            this.logger.warn(
+              `Failed to create ${entityName} item: Invalid response EC=${postResponse.data?.EC}`
+            );
           }
-          this.logger.log(`Created ${entityName} ${i + 1}/${needed}`);
         } catch (error) {
           this.logger.warn(
-            `Failed to create ${entityName} item ${i + 1}:`,
-            error.message
+            `Failed to create ${entityName} item: ${error.message}`
           );
         }
+        attempts++;
+      }
+
+      if (successfulCreations < needed) {
+        this.logger.warn(
+          `Could only create ${successfulCreations}/${needed} ${entityName} items after ${attempts} attempts`
+        );
       }
 
       // Return combined data
       const finalData = [...currentData, ...newItems];
       this.logger.log(`${entityName} pool now has ${finalData.length} items`);
-      return finalData.slice(0, this.minPoolSize);
+      return finalData;
     } catch (error) {
       this.logger.error(`Error ensuring ${entityName} pool:`, error.message);
       return [];
@@ -213,7 +236,7 @@ export class DataPoolService implements OnModuleInit {
       };
 
       const postResponse = await axios.post(
-        `${this.realBackendUrl}/auth/register-super-admin`,
+        `${this.realBackendUrl}/auth/register-super-admin?is-generated=true`,
         itemData
       );
 
@@ -257,7 +280,7 @@ export class DataPoolService implements OnModuleInit {
       };
 
       const postResponse = await axios.post(
-        `${this.realBackendUrl}/auth/register-finance-admin`,
+        `${this.realBackendUrl}/auth/register-finance-admin?is-generated=true`,
         itemData
       );
 
@@ -301,7 +324,7 @@ export class DataPoolService implements OnModuleInit {
       };
 
       const postResponse = await axios.post(
-        `${this.realBackendUrl}/auth/register-companion-admin`,
+        `${this.realBackendUrl}/auth/register-companion-admin?is-generated=true`,
         itemData
       );
 
@@ -357,7 +380,7 @@ export class DataPoolService implements OnModuleInit {
     return this.ensureEntityPool(
       "Restaurants",
       "/restaurants",
-      "/auth/register-restaurant",
+      "/auth/register-restaurant?is-generated=true",
       () => {
         // Pick random address and food category from actual pools
         const randomAddress =
@@ -580,7 +603,7 @@ export class DataPoolService implements OnModuleInit {
     return this.ensureEntityPool(
       "Drivers",
       "/drivers",
-      "/auth/register-driver",
+      "/auth/register-driver?is-generated=true",
       () => {
         // Pick random address from actual pool
         const randomAddress =
@@ -618,7 +641,7 @@ export class DataPoolService implements OnModuleInit {
     return this.ensureEntityPool(
       "Customers",
       "/customers",
-      "/auth/register-customer",
+      "/auth/register-customer?is-generated=true",
       () => {
         const firstName = uniqueNamesGenerator({ dictionaries: [names] });
         const lastName = uniqueNamesGenerator({ dictionaries: [animals] });
@@ -638,7 +661,7 @@ export class DataPoolService implements OnModuleInit {
     return this.ensureEntityPool(
       "CustomerCares",
       "/customer-cares",
-      "/auth/register-customer-care",
+      "/auth/register-customer-care?is-generated=true",
       () => {
         const firstName = uniqueNamesGenerator({ dictionaries: [names] });
         const lastName = uniqueNamesGenerator({ dictionaries: [adjectives] });
