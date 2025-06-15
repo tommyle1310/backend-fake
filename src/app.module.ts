@@ -1,17 +1,14 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DataPoolModule } from './data-pool/data-pool.module';
 import { RedisService } from './redis/redis.service';
+import { AutoGeneratorModule } from './auto-generator/auto-generator.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env'
-    }),
-    DataPoolModule
+    DataPoolModule,
+    AutoGeneratorModule
   ],
   controllers: [AppController],
   providers: [AppService, RedisService],

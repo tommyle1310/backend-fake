@@ -487,7 +487,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensureMenuItems(): Promise<any[]> {
+  async ensureMenuItems(): Promise<any[]> {
     const dishes = [
       "Pho",
       "Banh Mi",
@@ -563,7 +563,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensureMenuItemVariants(): Promise<any[]> {
+  async ensureMenuItemVariants(): Promise<any[]> {
     const sizes = ["Small", "Medium", "Large"];
     const spiceLevels = ["Mild", "Medium", "Spicy", "Extra Spicy"];
 
@@ -599,7 +599,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensurePromotions(): Promise<any[]> {
+  async ensurePromotions(): Promise<any[]> {
     const promoTypes = ["percentage", "fixed_amount", "bogo"];
 
     // Get food categories first
@@ -648,7 +648,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensureDrivers(): Promise<any[]> {
+  async ensureDrivers(): Promise<any[]> {
     // Get address books first
     const addressBooks = await this.ensureAddressBooks();
 
@@ -689,7 +689,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensureCustomers(): Promise<any[]> {
+  async ensureCustomers(): Promise<any[]> {
     return this.ensureEntityPool(
       "Customers",
       "/customers",
@@ -709,7 +709,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensureCustomerCares(): Promise<any[]> {
+  async ensureCustomerCares(): Promise<any[]> {
     return this.ensureEntityPool(
       "CustomerCares",
       "/customer-cares",
@@ -729,7 +729,7 @@ export class DataPoolService implements OnModuleInit {
     );
   }
 
-  private async ensureOrders(): Promise<any[]> {
+  async ensureOrders(): Promise<any[]> {
     // Use the valid order statuses from constants
     const orderStatuses = VALID_ORDER_STATUSES;
 
@@ -804,7 +804,7 @@ export class DataPoolService implements OnModuleInit {
         tracking_info: "ORDER_PLACED", // This is a valid tracking info
       };
     });
-}
+  }
 
   async getDataPools(): Promise<any> {
     const cachedPools = await this.redisService.get(this.cacheKey);
