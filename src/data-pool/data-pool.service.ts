@@ -10,12 +10,13 @@ import {
   names,
 } from "unique-names-generator";
 import { VALID_ORDER_STATUSES } from "src/types/orders";
+import { BACKEND_URL } from "src/constants";
+
 
 @Injectable()
 export class DataPoolService implements OnModuleInit {
   private readonly logger = new Logger(DataPoolService.name);
-  private readonly realBackendUrl =
-    process.env.REAL_BACKEND_URL || "http://localhost:1310";
+  private readonly realBackendUrl = BACKEND_URL;
   private readonly minPoolSize = 10;
   private readonly cacheKey = "data-pools:all";
   private readonly cacheTtl = 3600; // 1 hour
@@ -741,7 +742,7 @@ export class DataPoolService implements OnModuleInit {
     const menuItems = await this.ensureMenuItems();
     const menuItemVariants = await this.ensureMenuItemVariants();
 
-    return this.ensureEntityPool("Orders", "/orders", "/orders", () => {
+    return this.ensureEntityPool("Orders", "/orders", "/orders?is-generated=true", () => {
       // Pick random entities from actual pools
       const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
       const randomRestaurant = restaurants[Math.floor(Math.random() * restaurants.length)];
