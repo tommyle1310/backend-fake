@@ -1,5 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { DataPoolService } from '../data-pool/data-pool.service';
+import axios from 'axios';
+import { BACKEND_URL } from '../constants';
 
 @Injectable()
 export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
@@ -8,6 +10,7 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
   private readonly minInterval = 5000; // 5 seconds
   private readonly maxInterval = 15000; // 15 seconds
   private intervalId: NodeJS.Timeout;
+  private readonly realBackendUrl = BACKEND_URL;
 
   constructor(private readonly dataPoolService: DataPoolService) {}
 
@@ -26,6 +29,68 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
     return Math.floor(Math.random() * (this.maxInterval - this.minInterval + 1)) + this.minInterval;
   }
 
+  private getRandomCount(): number {
+    // Generate 1-3 items randomly
+    return Math.floor(Math.random() * 3) + 1;
+  }
+
+  private async ensureSpecialStatusOrders(): Promise<void> {
+    try {
+      // Check current orders
+      const response = await axios.get(`${this.realBackendUrl}/orders`);
+      const currentOrders = response.data?.data || [];
+
+      if (Array.isArray(currentOrders)) {
+        const deliveredCount = currentOrders.filter(order => order.status === 'DELIVERED').length;
+        const cancelledCount = currentOrders.filter(order => order.status === 'CANCELLED').length;
+
+        // Check if we need more DELIVERED orders
+        const neededDelivered = Math.max(0, 5 - deliveredCount);
+        if (neededDelivered > 0) {
+          this.logger.log(`Auto-generator ensuring ${neededDelivered} DELIVERED orders...`);
+          await this.generateSpecialStatusOrders('DELIVERED', neededDelivered);
+        }
+
+        // Check if we need more CANCELLED orders
+        const neededCancelled = Math.max(0, 2 - cancelledCount);
+        if (neededCancelled > 0) {
+          this.logger.log(`Auto-generator ensuring ${neededCancelled} CANCELLED orders...`);
+          await this.generateSpecialStatusOrders('CANCELLED', neededCancelled);
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error ensuring special status orders in auto-generator:', error.message);
+    }
+  }
+
+  private async generateSpecialStatusOrders(status: string, count: number): Promise<void> {
+    for (let i = 0; i < count; i++) {
+      try {
+        // Generate orders with specific status using the generateAdditionalOrders method
+        // but override the status
+        const orders = await this.dataPoolService.generateAdditionalOrders(1);
+        
+        // If order was created successfully, update its status
+        if (orders && orders.length > 0) {
+          const orderId = orders[0].id;
+          if (orderId) {
+            // Update the order status
+            const updateResponse = await axios.put(
+              `${this.realBackendUrl}/orders/${orderId}`,
+              { status: status }
+            );
+            
+            if (updateResponse.data?.EC === 0) {
+              this.logger.log(`Successfully updated order ${orderId} to ${status} status`);
+            }
+          }
+        }
+      } catch (error) {
+        this.logger.error(`Error generating ${status} order ${i + 1}:`, error.message);
+      }
+    }
+  }
+
   private startGenerationLoop() {
     // Check every 5 seconds
     this.intervalId = setInterval(async () => {
@@ -35,6 +100,11 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
       }
 
       try {
+        // First, ensure we have minimum special status orders (every 10th cycle)
+        if (Math.random() < 0.1) { // 10% chance to check special orders
+          await this.ensureSpecialStatusOrders();
+        }
+
         // Random chance to generate (30% chance)
         if (Math.random() > 0.3) {
           return;
@@ -47,6 +117,7 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
           'Orders',
           'Customers',
           'Drivers',
+          'Restaurants',
           'CustomerCares',
           'MenuItems',
           'MenuItemVariants',
@@ -63,7 +134,8 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
 
         // Generate each selected entity
         for (const entity of selectedEntities) {
-          this.logger.log(`Generating new ${entity}...`);
+          const count = this.getRandomCount();
+          this.logger.log(`Generating ${count} additional ${entity}...`);
           
           // Wait a random interval between generations
           await new Promise(resolve => setTimeout(resolve, this.getRandomInterval()));
@@ -71,30 +143,33 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
           try {
             switch (entity) {
               case 'Orders':
-                await this.dataPoolService.ensureOrders();
+                await this.dataPoolService.generateAdditionalOrders(count);
                 break;
               case 'Customers':
-                await this.dataPoolService.ensureCustomers();
+                await this.dataPoolService.generateAdditionalCustomers(count);
                 break;
               case 'Drivers':
-                await this.dataPoolService.ensureDrivers();
+                await this.dataPoolService.generateAdditionalDrivers(count);
+                break;
+              case 'Restaurants':
+                await this.dataPoolService.generateAdditionalRestaurants(count);
                 break;
               case 'CustomerCares':
-                await this.dataPoolService.ensureCustomerCares();
+                await this.dataPoolService.generateAdditionalCustomerCares(count);
                 break;
               case 'MenuItems':
-                await this.dataPoolService.ensureMenuItems();
+                await this.dataPoolService.generateAdditionalMenuItems(count);
                 break;
               case 'MenuItemVariants':
-                await this.dataPoolService.ensureMenuItemVariants();
+                await this.dataPoolService.generateAdditionalMenuItemVariants(count);
                 break;
               case 'Promotions':
-                await this.dataPoolService.ensurePromotions();
+                await this.dataPoolService.generateAdditionalPromotions(count);
                 break;
             }
-            this.logger.log(`Successfully generated new ${entity}`);
+            this.logger.log(`Successfully generated ${count} additional ${entity}`);
           } catch (error) {
-            this.logger.error(`Error generating ${entity}:`, error);
+            this.logger.error(`Error generating additional ${entity}:`, error);
           }
         }
 

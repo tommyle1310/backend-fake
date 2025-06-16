@@ -6,7 +6,8 @@ export const VALID_ORDER_STATUSES = [
     'RESTAURANT_PICKUP',
     'DISPATCHED',
     'EN_ROUTE',
-    'DELIVERED'
+    'DELIVERED',
+    'CANCELLED'
   ];
   
   // Add valid order tracking info
@@ -16,5 +17,6 @@ export const VALID_ORDER_STATUSES = [
     'RESTAURANT_PICKUP',
     'DISPATCHED',
     'EN_ROUTE',
-    'DELIVERED'
+    'DELIVERED',
+    'CANCELLED'
   ];
