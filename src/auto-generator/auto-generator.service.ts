@@ -121,7 +121,9 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
           'CustomerCares',
           'MenuItems',
           'MenuItemVariants',
-          'Promotions'
+          'Promotions',
+          'CustomerCareInquiries',
+          'RatingReviews'
         ];
 
         // Randomly select 1-3 entities to generate
@@ -165,6 +167,12 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
                 break;
               case 'Promotions':
                 await this.dataPoolService.generateAdditionalPromotions(count);
+                break;
+              case 'CustomerCareInquiries':
+                await this.dataPoolService.generateAdditionalCustomerCareInquiries(count);
+                break;
+              case 'RatingReviews':
+                await this.dataPoolService.generateAdditionalRatingReviews(count);
                 break;
             }
             this.logger.log(`Successfully generated ${count} additional ${entity}`);
