@@ -57,6 +57,8 @@ export class DataPoolService implements OnModuleInit {
         customers: await this.ensureCustomers(),
         customerCares: await this.ensureCustomerCares(),
         orders: await this.ensureOrders(),
+        customerCareInquiries: await this.ensureCustomerCareInquiries(),
+        ratingReviews: await this.ensureRatingReviews(),
       };
 
       // Cache the result
@@ -1469,5 +1471,258 @@ export class DataPoolService implements OnModuleInit {
       },
       count
     );
+  }
+
+  async ensureCustomerCareInquiries(): Promise<any[]> {
+    // Get required data pools first
+    const customers = await this.ensureCustomers();
+    const drivers = await this.ensureDrivers();
+    const restaurants = await this.ensureRestaurants();
+
+    return this.ensureEntityPool(
+      "CustomerCareInquiries",
+      "/customer-care-inquiries",
+      "/customer-care-inquiries",
+      () => {
+        // Randomly pick from customers, drivers, or restaurants
+        const entityTypes = 'customer'
+        let customerId = null;
+        if (entityTypes === 'customer') {
+          const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
+          customerId = randomCustomer?.id || null;
+        } 
+
+        const subjects = [
+          "Payment Issue",
+          "Order Problem",
+          "Delivery Delay",
+          "Account Access",
+          "Refund Request",
+          "Technical Support",
+          "General Inquiry"
+        ];
+
+        const descriptions = [
+          "I'm having trouble with my recent order",
+          "Payment was charged but order not received",
+          "Delivery driver never arrived",
+          "Cannot access my account",
+          "Need refund for cancelled order",
+          "App is not working properly",
+          "General question about service"
+        ];
+
+        const statuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ESCALATE'];
+        const issueTypes = ['ACCOUNT', 'PAYMENT', 'PRODUCT', 'DELIVERY', 'REFUND', 'TECHNICAL', 'OTHER'];
+
+        return {
+          customer_id: customerId,
+          subject: subjects[Math.floor(Math.random() * subjects.length)],
+          description: descriptions[Math.floor(Math.random() * descriptions.length)],
+          status: statuses[Math.floor(Math.random() * statuses.length)],
+          issue_type: issueTypes[Math.floor(Math.random() * issueTypes.length)]
+        };
+      }
+    );
+  }
+
+  async ensureRatingReviews(): Promise<any[]> {
+    // Get required data pools first
+    const customers = await this.ensureCustomers();
+    const drivers = await this.ensureDrivers();
+    const restaurants = await this.ensureRestaurants();
+    const orders = await this.ensureOrders();
+
+    return this.ensureEntityPool(
+      "RatingReviews",
+      "/ratings-reviews",
+      "/ratings-reviews",
+      () => {
+        // Randomly pick reviewer and recipient types
+        const userTypes = ['customer', 'driver', 'restaurant'];
+        const reviewerType = userTypes[Math.floor(Math.random() * userTypes.length)];
+        const recipientType = userTypes[Math.floor(Math.random() * userTypes.length)];
+        
+        // Get random entities
+        const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
+        const randomDriver = drivers[Math.floor(Math.random() * drivers.length)];
+        const randomRestaurant = restaurants[Math.floor(Math.random() * restaurants.length)];
+        const randomOrder = orders[Math.floor(Math.random() * orders.length)];
+
+        // Set reviewer IDs based on type
+        let reviewerData = {};
+        if (reviewerType === 'customer') {
+          reviewerData = { rr_reviewer_customer_id: randomCustomer?.id || null };
+        } else if (reviewerType === 'driver') {
+          reviewerData = { rr_reviewer_driver_id: randomDriver?.id || null };
+        } else {
+          reviewerData = { rr_reviewer_restaurant_id: randomRestaurant?.id || null };
+        }
+
+        // Set recipient IDs based on type
+        let recipientData = {};
+        if (recipientType === 'customer') {
+          recipientData = { rr_recipient_customer_id: randomCustomer?.id || null };
+        } else if (recipientType === 'driver') {
+          recipientData = { rr_recipient_driver_id: randomDriver?.id || null };
+        } else {
+          recipientData = { rr_recipient_restaurant_id: randomRestaurant?.id || null };
+        }
+
+        const foodReviews = [
+          "Delicious food, highly recommended!",
+          "Food was okay, could be better",
+          "Amazing taste and quality",
+          "Not satisfied with the food quality",
+          "Perfect meal, will order again"
+        ];
+
+        const deliveryReviews = [
+          "Fast and professional delivery",
+          "Delivery was delayed but driver was polite",
+          "Excellent delivery service",
+          "Food arrived cold",
+          "Great delivery experience"
+        ];
+
+        return {
+          ...reviewerData,
+          reviewer_type: reviewerType,
+          ...recipientData,
+          recipient_type: recipientType,
+          order_id: randomOrder?.id || null,
+          food_rating: Math.floor(Math.random() * 5) + 1,
+          delivery_rating: Math.floor(Math.random() * 5) + 1,
+          food_review: foodReviews[Math.floor(Math.random() * foodReviews.length)],
+          delivery_review: deliveryReviews[Math.floor(Math.random() * deliveryReviews.length)],
+          images: [
+            {
+              url: `https://via.placeholder.com/300x200?text=Review${Math.floor(Math.random() * 100)}`,
+              key: `review_img_${uuidv4()}`
+            }
+          ]
+        };
+      }
+    );
+  }
+
+  async generateAdditionalCustomerCareInquiries(count: number = 1): Promise<any[]> {
+    const customers = await this.ensureCustomers();
+    const drivers = await this.ensureDrivers();
+    const restaurants = await this.ensureRestaurants();
+
+    return this.generateAdditionalEntity("CustomerCareInquiries", "/customer-care-inquiries", () => {
+      // Randomly pick from customers, drivers, or restaurants
+      
+      let customerId = null;
+        const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
+        customerId = randomCustomer?.id || null;
+     
+
+      const subjects = [
+        "Payment Issue",
+        "Order Problem", 
+        "Delivery Delay",
+        "Account Access",
+        "Refund Request",
+        "Technical Support",
+        "General Inquiry"
+      ];
+
+      const descriptions = [
+        "I'm having trouble with my recent order",
+        "Payment was charged but order not received",
+        "Delivery driver never arrived",
+        "Cannot access my account",
+        "Need refund for cancelled order",
+        "App is not working properly",
+        "General question about service"
+      ];
+
+      const statuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'ESCALATE'];
+      const issueTypes = ['ACCOUNT', 'PAYMENT', 'PRODUCT', 'DELIVERY', 'REFUND', 'TECHNICAL', 'OTHER'];
+
+      return {
+        customer_id: customerId,
+        subject: subjects[Math.floor(Math.random() * subjects.length)],
+        description: descriptions[Math.floor(Math.random() * descriptions.length)],
+        status: statuses[Math.floor(Math.random() * statuses.length)],
+        issue_type: issueTypes[Math.floor(Math.random() * issueTypes.length)]
+      };
+    }, count);
+  }
+
+  async generateAdditionalRatingReviews(count: number = 1): Promise<any[]> {
+    const customers = await this.ensureCustomers();
+    const drivers = await this.ensureDrivers();
+    const restaurants = await this.ensureRestaurants();
+    const orders = await this.ensureOrders();
+
+    return this.generateAdditionalEntity("RatingReviews", "/ratings-reviews", () => {
+      // Randomly pick reviewer and recipient types
+      const userTypes = ['customer', 'driver', 'restaurant'];
+      const reviewerType = userTypes[Math.floor(Math.random() * userTypes.length)];
+      const recipientType = userTypes[Math.floor(Math.random() * userTypes.length)];
+      
+      // Get random entities
+      const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
+      const randomDriver = drivers[Math.floor(Math.random() * drivers.length)];
+      const randomRestaurant = restaurants[Math.floor(Math.random() * restaurants.length)];
+      const randomOrder = orders[Math.floor(Math.random() * orders.length)];
+
+      // Set reviewer IDs based on type
+      let reviewerData = {};
+      if (reviewerType === 'customer') {
+        reviewerData = { rr_reviewer_customer_id: randomCustomer?.id || null };
+      } else if (reviewerType === 'driver') {
+        reviewerData = { rr_reviewer_driver_id: randomDriver?.id || null };
+      } else {
+        reviewerData = { rr_reviewer_restaurant_id: randomRestaurant?.id || null };
+      }
+
+      // Set recipient IDs based on type
+      let recipientData = {};
+      if (recipientType === 'customer') {
+        recipientData = { rr_recipient_customer_id: randomCustomer?.id || null };
+      } else if (recipientType === 'driver') {
+        recipientData = { rr_recipient_driver_id: randomDriver?.id || null };
+      } else {
+        recipientData = { rr_recipient_restaurant_id: randomRestaurant?.id || null };
+      }
+
+      const foodReviews = [
+        "Delicious food, highly recommended!",
+        "Food was okay, could be better",
+        "Amazing taste and quality",
+        "Not satisfied with the food quality",
+        "Perfect meal, will order again"
+      ];
+
+      const deliveryReviews = [
+        "Fast and professional delivery",
+        "Delivery was delayed but driver was polite",
+        "Excellent delivery service",
+        "Food arrived cold",
+        "Great delivery experience"
+      ];
+
+      return {
+        ...reviewerData,
+        reviewer_type: reviewerType,
+        ...recipientData,
+        recipient_type: recipientType,
+        order_id: randomOrder?.id || null,
+        food_rating: Math.floor(Math.random() * 5) + 1,
+        delivery_rating: Math.floor(Math.random() * 5) + 1,
+        food_review: foodReviews[Math.floor(Math.random() * foodReviews.length)],
+        delivery_review: deliveryReviews[Math.floor(Math.random() * deliveryReviews.length)],
+        images: [
+          {
+            url: `https://via.placeholder.com/300x200?text=Review${Math.floor(Math.random() * 100)}`,
+            key: `review_img_${uuidv4()}`
+          }
+        ]
+      };
+    }, count);
   }
 }

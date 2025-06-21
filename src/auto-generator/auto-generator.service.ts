@@ -142,14 +142,18 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
 
         // List of possible entities to generate
         const entities = [
-          "Orders",
-          "Customers",
-          "Drivers",
-          "Restaurants",
-          "CustomerCares",
-          "MenuItems",
-          "MenuItemVariants",
-          "Promotions",
+
+          'Orders',
+          'Customers',
+          'Drivers',
+          'Restaurants',
+          'CustomerCares',
+          'MenuItems',
+          'MenuItemVariants',
+          'Promotions',
+          'CustomerCareInquiries',
+          'RatingReviews'
+
         ];
 
         // Randomly select 1-3 entities to generate
@@ -214,6 +218,12 @@ export class AutoGeneratorService implements OnModuleInit, OnModuleDestroy {
                 break;
               case "Promotions":
                 await this.dataPoolService.generateAdditionalPromotions(count);
+                break;
+              case 'CustomerCareInquiries':
+                await this.dataPoolService.generateAdditionalCustomerCareInquiries(count);
+                break;
+              case 'RatingReviews':
+                await this.dataPoolService.generateAdditionalRatingReviews(count);
                 break;
             }
             this.logger.log(
