@@ -1,3 +1,4 @@
-export const IP_ADDRESS = '192.168.1.21'
+export const IP_ADDRESS = "192.168.1.154";
 
-export const BACKEND_URL = `http://${'127.0.0.1'}:1310`
+export const BACKEND_URL = `http://${IP_ADDRESS}:1310`;
+
